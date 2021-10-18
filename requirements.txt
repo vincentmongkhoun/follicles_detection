@@ -1,7 +1,11 @@
 matplotlib
 numpy
 jupyter
-
+pandas
 
 tensorflow==2.6.0
 sklearn
+
+# dev
+flake8
+black
