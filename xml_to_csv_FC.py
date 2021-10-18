@@ -1,7 +1,9 @@
 import os
 import glob
-import pandas as pd
 import xml.etree.ElementTree as ET
+
+import click
+import pandas as pd
 
 
 def convert_class_to_int_label(label_text):
@@ -53,19 +55,20 @@ def xml_to_csv(path):
     return xml_df
 
 
-def main():
-    # for folder in ["train", "test"]:
-    xml_folder = os.path.abspath("./data/scenario1/Xml")
+@click.command()
+@click.argument("xml_folder", type=click.Path(exists=True, file_okay=False))
+def main(xml_folder):
+    """Convert xml files in folder XML_FOLDER to a single labels.csv"""
     parent_folder = os.path.dirname(xml_folder)
     output_filename = os.path.join(parent_folder, "labels.csv")
 
     # image_path = os.path.join(os.getcwd(), folder)
-    print(f"Reading xml files in {xml_folder}")
+    print(f"Reading xml files in {parent_folder}")
 
     xml_df = xml_to_csv(xml_folder)
     xml_df.to_csv(output_filename, index=None)
 
-    print("Successfully converted xml to csv: {output_filename}")
+    print(f"Successfully converted xml to csv: {output_filename}")
 
 
 if __name__ == "__main__":
