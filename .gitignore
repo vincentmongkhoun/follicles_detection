@@ -7,3 +7,4 @@ retinanet
 val
 *.csv
 *_TFRecord
+models
