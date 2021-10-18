@@ -1,3 +1,4 @@
+# DATA FILES
 data*
 data_retina
 images
@@ -7,4 +8,14 @@ retinanet
 val
 *.csv
 *_TFRecord
+
+# MODELS
 models
+
+# python
+.venv
+.pyc
+__pycache__
+
+# MAC os
+.DS_Store
