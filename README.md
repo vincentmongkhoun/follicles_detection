@@ -1,7 +1,7 @@
 # Detection of ovarian follicles
 
 
-Authors : François Caud and Alexandre Gramfort (Université Paris-Saclay)
+Authors : François Caud, Benjamin Habert and Alexandre Gramfort (Université Paris-Saclay)
 
 
 ## Getting started
