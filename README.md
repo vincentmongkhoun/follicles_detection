@@ -100,14 +100,22 @@ Folders `data` and `models` are not committed
 
 - 1. Convert source .tiff images to lighter .jpg
 
-    ```
-    # TODO
-    ```
+    - place source images in `data/coupes_tiff/`
+    - install [imagemagick](https://imagemagick.org/index.php)
+    - run convert script
+
+        ```
+        $ ./.preprocessing_scripts/tiff_to_jpg.sh
+        Converting images from data/coupes_tiff to data/coupes_jpg
+        Converting data/coupes_tiff/D-1M01-2.tiff
+        ```
+
+      This process takes a few minutes. Images are output in `data/coupes_jpg/`
 
 - 2. Convert xml files of labels and bounding boxes to a single `labels.csv`
 
     ```
-    % python preprocessing_scripts/xml_to_csv.py data/scenario1/Xml 
+    $ python preprocessing_scripts/xml_to_csv.py data/scenario1/Xml 
     Reading xml files in data/scenario1
     Successfully converted xml to csv: data/scenario1/labels.csv
     ```
