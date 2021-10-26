@@ -52,23 +52,47 @@ def xml_to_csv(path):
         "ymax",
     ]
     xml_df = pd.DataFrame(xml_list, columns=column_names)
+    xml_df = xml_df.sort_values(by=["filename", "class", "xmin", "ymin"])
+    return xml_df
+
+
+def remove_impossible_bounding_boxes(xml_df):
+    boxes = xml_df.loc[:, ["xmin", "ymin", "xmax", "ymax"]]
+
+    has_nan = boxes.isnull().any(axis="columns")
+    print(f"Bounding boxes with NaN coordinates: {has_nan.sum()}")
+
+    has_nagative = (boxes < 0).any(axis="columns")
+    print(f"Bounding boxes with negative coordinates: {has_nagative.sum()}")
+
+    max_pixel_width = 50_000
+    has_huge = (boxes > max_pixel_width).any(axis="columns")
+    print(f"Bounding boxes with very large coordinates: {has_huge.sum()}")
+
+    to_remove = has_nan | has_nagative | has_huge
+    print(f"Removing {to_remove.sum()} coordinates from the dataset.")
+    xml_df = xml_df.loc[~to_remove]
+
     return xml_df
 
 
 @click.command()
 @click.argument("xml_folder", type=click.Path(exists=True, file_okay=False))
-def main(xml_folder):
+@click.argument("csv_path", type=click.Path(dir_okay=False))
+def main(xml_folder, csv_path):
     """Convert xml files in folder XML_FOLDER to a single labels.csv"""
     parent_folder = os.path.dirname(xml_folder)
-    output_filename = os.path.join(parent_folder, "labels.csv")
+    assert csv_path.endswith(".csv")
+    # output_filename = os.path.join(parent_folder, "labels.csv")
 
     # image_path = os.path.join(os.getcwd(), folder)
     print(f"Reading xml files in {parent_folder}")
 
     xml_df = xml_to_csv(xml_folder)
-    xml_df.to_csv(output_filename, index=None)
+    xml_df = remove_impossible_bounding_boxes(xml_df)
+    xml_df.to_csv(csv_path, index=None)
 
-    print(f"Successfully converted xml to csv: {output_filename}")
+    print(f"Successfully converted xml to csv: {csv_path}")
 
 
 if __name__ == "__main__":

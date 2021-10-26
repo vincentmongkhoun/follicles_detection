@@ -1,5 +1,6 @@
 # DATA FILES
 data*
+hidden_data*
 data_retina
 images
 train
@@ -8,6 +9,7 @@ retinanet
 val
 *.csv
 *_TFRecord
+magick-*
 
 # MODELS
 models
