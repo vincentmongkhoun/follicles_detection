@@ -10,7 +10,7 @@ from pathlib import Path
 from osfclient.api import OSF
 from osfclient.exceptions import UnauthorizedException
 
-LOCAL_DATA = Path(__file__).parent / "data/DL"
+LOCAL_DATA = Path(__file__).parent / "data"
 
 CHALLENGE_NAME = "follicles_detection"
 # you might choosing checking for the correct checksum, if not set
