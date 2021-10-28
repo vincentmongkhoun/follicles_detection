@@ -119,6 +119,10 @@ def _get_data(path=".", split="train"):
     X = np.array(filepaths, dtype=object)
     y = np.array(locations, dtype=object)
     assert len(X) == len(y)
+    if os.environ.get("RAMP_TEST_MODE", False):
+        # launched with --quick-test option; only a small subset of the data
+        X = X[[1, -1]]
+        y = y[[1, -1]]
     return X, y
 
 
@@ -128,4 +132,3 @@ def get_train_data(path="."):
 
 def get_test_data(path="."):
     return _get_data(path, "test")
-
