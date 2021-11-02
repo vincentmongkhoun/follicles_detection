@@ -1,127 +1,59 @@
-"""
-Doc:
-- https://paris-saclay-cds.github.io/ramp-docs/ramp-workflow/stable/problem.html
-
-
-Examples of problem.py:
-- basic titanic: https://github.com/ramp-kits/titanic/blob/master/problem.py
-- for mars challenge: https://github.com/ramp-kits/mars_craters/blob/master/problem.py
-- where everything is custom: https://github.com/ramp-kits/meg/blob/master/problem.py
-
-
-What we need to define:
-
-1. Prediction type
-    - probably cannot use make_detection() as it uses a function greedy_nms
-        https://github.com/paris-saclay-cds/ramp-workflow/blob/212720ff677985f57a0f26e073df9bad6dc5c9c0/rampwf/prediction_types/detection.py#L84
-      that rely on the computation of IoU between two circles.
-      Note: this method is only called in the `combine()` method of the Predictions class.
-      Maybe we can use this if we do not rely on `combine()`.
-
-    - custom problem implements a class _MultiOutputClassification(BasePrediction)
-
-2. Workflow
-    -> c'est ça qui va chercher la submission et qui la lance
-    - peut être qu'on peut utiliser le `Estimator()` de base ?
-    - je pense qu'on peut utiliser le ObjectDetector() 
-      https://github.com/paris-saclay-cds/ramp-workflow/blob/212720ff677985f57a0f26e073df9bad6dc5c9c0/rampwf/workflows/object_detector.py#L10
-      qui a l'air assez simple dans son fonctionnement.
-
-
-3. Des fonctions de score
-    - on ne peut pas utiliser celle utilisées par le mars challenge
-    (ex     rw.score_types.DetectionAveragePrecision(name='ap'),)
-    car elles se basent sur des cercles sans catégorie
-
-
-
-"""
 import re
 import sys
 import os
 import pandas as pd
 import numpy as np
+from sklearn.model_selection import LeaveOneGroupOut
 
 from rampwf.workflows import ObjectDetector
 
-# from rampwf.prediction_types.base import BasePrediction
-# from rampwf.prediction_types import make_detection
-from rampwf.prediction_types.detection import (
-    Predictions as DetectionPredictions,
-)
-from sklearn.model_selection import LeaveOneGroupOut
 
-sys.path.append(os.path.dirname(__file__))
-from ramp_custom.scores import (
-    ClassAveragePrecision,
-    MeanAveragePrecision,
-    apply_NMS_for_y_pred,
-)
+class utils:
+    """Utility functions helpful in the challenge."""
+
+    sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+    from ramp_custom.scoring import (
+        ClassAveragePrecision,
+        MeanAveragePrecision,
+    )
+    from ramp_custom.predictions import make_custom_predictions
+    from ramp_custom.images import load_image
+    from ramp_custom import geometry
+    from ramp_custom.geometry import apply_NMS_for_y_pred, apply_NMS_for_image
+
 
 problem_title = "Follicle Detection and Classification"
 
-
-class CustomPredictions(DetectionPredictions):
-    @classmethod
-    def combine(cls, predictions_list, index_list=None):
-        """
-        Parameters:
-            predictions_list : list of CustomPredictions instances
-
-        Returns:
-            combined_predictions : a single CustomPredictions instance
-
-        """
-        if index_list is None:  # we combine the full list
-            index_list = range(len(predictions_list))
-
-        # list of length N_predictions
-        # each element in the list is a y_pred which is a numpy
-        # array of length n_images. Each element in this array
-        # is a list of predictions made for this image (for this model)
-        y_pred_list = [predictions_list[i].y_pred for i in index_list]
-        n_images = len(y_pred_list[0])
-
-        all_predictions_by_image = [[] for _ in range(n_images)]
-        num_predictions_by_image = [0 for _ in range(n_images)]
-        for y_pred_for_model in y_pred_list:
-            for image_index, predictions_for_image in enumerate(y_pred_for_model):
-                if predictions_for_image is not None:
-                    # predictions_for_image is a list of predictions
-                    #   (each prediction is a dict {"class": xx, "proba": xx, "bbox": xx})
-                    # that where made by a given model on a given image
-                    all_predictions_by_image[image_index] += predictions_for_image
-                    num_predictions_by_image[image_index] += 1
-
-        # convert the result to a numpy array of list to make is compatible
-        # with ramp indexing
-        y_pred_combined = np.empty(n_images, dtype=object)
-        y_pred_combined[:] = all_predictions_by_image
-        # apply Non Maximum Suppression to remove duplicated predictions
-        y_pred_combined = apply_NMS_for_y_pred(y_pred_combined, iou_threshold=0.25)
-
-        # we return a single CustomPredictions object with the combined predictions
-        combined_predictions = cls(y_pred=y_pred_combined)
-        return combined_predictions
-
-
-# REQUIRED
-Predictions = CustomPredictions
+SCORING_IOU = 0.25
+# REQUIRED: Predictions, workflow, score_types, get_cv, get_train_data, get_test_data
+Predictions = utils.make_custom_predictions(iou_threshold=SCORING_IOU)
 workflow = ObjectDetector()
 score_types = [
-    ClassAveragePrecision("Primordial"),
-    ClassAveragePrecision("Primary"),
-    ClassAveragePrecision("Secondary"),
-    ClassAveragePrecision("Tertiary"),
-    MeanAveragePrecision(
-        class_names=["Primordial", "Primary", "Secondary", "Tertiary"]
+    utils.ClassAveragePrecision("Primordial", iou_threshold=SCORING_IOU),
+    utils.ClassAveragePrecision("Primary", iou_threshold=SCORING_IOU),
+    utils.ClassAveragePrecision("Secondary", iou_threshold=SCORING_IOU),
+    utils.ClassAveragePrecision("Tertiary", iou_threshold=SCORING_IOU),
+    utils.MeanAveragePrecision(
+        class_names=["Primordial", "Primary", "Secondary", "Tertiary"],
+        weights=[1, 1, 1, 1],
+        iou_threshold=SCORING_IOU,
     ),
 ]
 
 
 def get_cv(X, y):
-    """
-    X: list of image names
+    """Split data by ovary number
+
+    Uses LeaveOneGroupOut where each group is a set of images
+    that correspond to a given overy number.
+
+    Parameters:
+    -----------
+    X : np.array
+        array of image absolute paths
+    y : np.array
+        array of lists of true follicule locations
+
     """
 
     def extract_ovary_number(filename):
@@ -135,8 +67,12 @@ def get_cv(X, y):
 
 def _get_data(path=".", split="train"):
     """
-    return: X: array of N image paths
-            y: array of N lists of dicts: {"bbox", "class"}
+    Returns
+    X : np.array
+        shape (N_images,)
+    y : np.array
+        shape (N_images,). Each element is a list of locations.
+
     """
     labels = pd.read_csv(os.path.join(path, "data", split, "labels.csv"))
     filepaths = []
@@ -165,6 +101,21 @@ def _get_data(path=".", split="train"):
 
 
 def get_train_data(path="."):
+    """Get train data from ``data/train/labels.csv``
+
+    Returns
+    -------
+    X : np.array
+        array of shape (N_images,).
+        each element in the array is an absolute path to an image
+    y : np.array
+        array of shape (N_images,).
+        each element in the array if a list of variable length.
+        each element in this list is a labelled location as a dictionnary::
+
+            {"class": "Primary", "bbox": (2022, 8282, 2300, 9000)}
+
+    """
     return _get_data(path, "train")
 
 
