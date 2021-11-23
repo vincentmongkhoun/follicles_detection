@@ -1,16 +1,24 @@
+# ramp-specifics
 ramp-workflow
+osfclient
 
+# generic datascience
 matplotlib
 numpy
 jupyter
 pandas
-click
-Pillow
-osfclient
+sklearn
 
 tensorflow==2.6.2
 sklearn
 
 # dev
+click
 flake8
 black
+# line_profiler
+
+# doc
+sphinx
+pydata-sphinx-theme
+myst-parser

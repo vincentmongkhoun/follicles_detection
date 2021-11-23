@@ -1,15 +1,17 @@
-from PIL import Image
-
-
-def load_image(path):
-    Image.MAX_IMAGE_PIXELS = None
-    return Image.open(path)
-
-
 try:
     from line_profiler import LineProfiler
 
     def do_profile(follow=[]):
+        """decorator for line profiling.
+
+        Parameters
+        ----------
+        follow : list
+            list of methods (actual methods, not their name) to measure
+            alongside the main profiled one
+
+        """
+
         def inner(func):
             def profiled_func(*args, **kwargs):
                 try:
