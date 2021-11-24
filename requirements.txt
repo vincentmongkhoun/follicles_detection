@@ -9,9 +9,8 @@ jupyter
 pandas
 sklearn
 
-# tools specific to this challenge
-Pillow
-tensorflow==2.6.0
+tensorflow==2.6.2
+sklearn
 
 # dev
 click
