@@ -1,14 +1,58 @@
-import os
+"""
+Result of `ramp-test --submision random_classifier`
+
+total runtime ~30min
+
+----------------------------
+Mean CV scores
+----------------------------
+score AP <Primordial>    AP <Primary>  AP <Secondary>   AP <Tertiary>         mean AP           time
+train  0.001 ± 0.0007  0.023 ± 0.0077   0.375 ± 0.025  0.436 ± 0.0563  0.209 ± 0.0208  130.8 ± 20.49
+valid       0.0 ± 0.0  0.037 ± 0.0214  0.332 ± 0.0734  0.458 ± 0.0557  0.207 ± 0.0107   166.2 ± 5.91
+test   0.001 ± 0.0018  0.008 ± 0.0141  0.325 ± 0.1782  0.398 ± 0.1259  0.183 ± 0.0683    32.3 ± 0.48
+----------------------------
+Bagged scores
+----------------------------
+score  AP <Primordial>  AP <Primary>  AP <Secondary>  AP <Tertiary>  mean AP
+valid            0.000         0.026           0.361          0.626    0.253
+test             0.002         0.008           0.475          0.625    0.278
+"""
 import numpy as np
 import tensorflow as tf
+from matplotlib.image import imread
+import PIL
 
-import problem
+PIL.Image.MAX_IMAGE_PIXELS = None  # otherwise large images cannot be loaded
+
+gpus = tf.config.list_physical_devices("GPU")
+if gpus:
+    # Restrict TensorFlow to only use the last GPU
+    try:
+        tf.config.set_visible_devices(gpus[-1], "GPU")
+        logical_gpus = tf.config.list_logical_devices("GPU")
+        print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPU")
+    except RuntimeError as e:
+        # Visible devices must be set before GPUs have been initialized
+        print(e)
 
 
 class ObjectDetector:
     def __init__(self):
-        self.IMG_SHAPE = (224, 224, 3)  # 3-colored images
+        self.IMG_SHAPE = (
+            224,
+            224,
+            3,
+        )  # size of thumbnails used by the internal classification model
+        self.CLASS_TO_INDEX = {
+            "Negative": 0,
+            "Primordial": 1,
+            "Primary": 2,
+            "Secondary": 3,
+            "Tertiary": 4,
+        }  # how to convert the provided classes of follicules to numbers
+        self.INDEX_TO_CLASS = {value: key for key, value in self.CLASS_TO_INDEX.items()}
 
+        # create classifier model based on MobileNet
         base_model = tf.keras.applications.MobileNetV2(
             input_shape=self.IMG_SHAPE, include_top=False, weights="imagenet"
         )
@@ -51,144 +95,142 @@ class ObjectDetector:
 
         """
         # Our self._model takes as input a tensor (M, 224, 224, 3) and a class encoded as a number
-        # Consequently we need to build these images from the files on disc
-        class_to_index = {
-            "Negative": 0,
-            "Primordial": 1,
-            "Primary": 2,
-            "Secondary": 3,
-            "Tertiary": 4,
-        }
+        # We need to build this tensor of small images (thumbnails) from the data
 
         thumbnails = []
         expected_predictions = []
 
         for filepath, locations in zip(X_image_paths, y_true_locations):
-            print(f"reading {filepath}")
-            image = problem.utils.load_image(filepath)
 
-            for loc in locations:
-                class_, bbox = loc["class"], loc["bbox"]
+            boxes_for_images = []
+            for true_location in locations:
+                expected_class = true_location["class"]
+                true_bbox = true_location["bbox"]
 
-                prediction = class_to_index[class_]
-                expected_predictions.append(prediction)
+                expected_pred = self.CLASS_TO_INDEX[expected_class]
+                expected_predictions.append(expected_pred)
 
-                thumbnail = image.crop(bbox)
-                thumbnail = thumbnail.resize((224, 224))
-                thumbnail = np.asarray(thumbnail)
-                thumbnails.append(thumbnail)
+                boxes_for_images.append(true_bbox)
 
-        X_for_classifier = np.array(thumbnails)
-        y_for_classifier = np.array(expected_predictions)
-        self._model.fit(X_for_classifier, y_for_classifier, epochs=10)
+            image = imread(filepath)
+            thumbnails_for_image = build_cropped_images(
+                image, boxes_for_images, self.IMG_SHAPE[0:2]
+            )
+            thumbnails.append(thumbnails_for_image)
+
+        X_for_classifier = tf.concat(
+            thumbnails, axis=0
+        )  # thumbnails as tensor of shape (N_boxes, 224, 224, 3)
+        y_for_classifier = tf.constant(
+            expected_predictions
+        )  # class to predict as tensor of shape (N_boxes)
+        self._model.fit(X_for_classifier, y_for_classifier, epochs=100)
         return self
 
-    # @do_profile(follow=[predict_locations_for_windows, build_cropped_images])
     def predict(self, X):
         print("Running predictions ...")
         # X = numpy array N rows, 1 column, type object
         # each row = one file name for an image
-        all_predictions = []
-        for i, image_path in enumerate(X):
-            img = problem.utils.load_image(image_path)
-            pred_list = predict_locations_for_windows(img, self._model)
-            all_predictions.append(pred_list)
-
         y_pred = np.empty(len(X), dtype=object)
-        y_pred[:] = all_predictions
+        for i, image_path in enumerate(X):
+            prediction_list_for_image = self.predict_single_image(image_path)
+            y_pred[i] = prediction_list_for_image
+
         return y_pred
 
+    def predict_single_image(self, image_path):
+        image = imread(image_path)
 
-def predict_locations_for_windows(coupe, model, window_size=1000, num_windows=10):
-    boxes = list(
-        generate_random_windows_for_image(
-            coupe, window_size=window_size, num_windows=num_windows
+        boxes_sizes = [3000, 1000, 300]  # px
+        boxes_amount = [200, 500, 2_000]
+        boxes = generate_random_windows_for_image(image, boxes_sizes, boxes_amount)
+        cropped_images = build_cropped_images(
+            image, boxes, crop_size=self.IMG_SHAPE[0:2]
         )
-    )
-    cropped_images = build_cropped_images(coupe, boxes, target_size=(224, 224))
-    predicted_probas = model.predict(cropped_images)
-    predicted_locations = convert_probas_to_locations(predicted_probas, boxes)
-    return predicted_locations
+
+        predicted_probas = self._model.predict(cropped_images)
+        predicted_locations = self.convert_probas_to_locations(predicted_probas, boxes)
+        return predicted_locations
+
+    def convert_probas_to_locations(self, probas, boxes):
+        top_index, top_proba = np.argmax(probas, axis=1), np.max(probas, axis=1)
+        predicted_locations = []
+        for index, proba, box in zip(top_index, top_proba, boxes):
+            if index != 0:
+                predicted_locations.append(
+                    {"class": self.INDEX_TO_CLASS[index], "proba": proba, "bbox": box}
+                )
+        return predicted_locations
 
 
-def generate_random_windows_for_image(image, window_size, num_windows):
-    """generator of square boxes that create a list of random
-    windows of size ~ window_size for the given image"""
-    mean = window_size
-    std = 0.15 * window_size
+def generate_random_windows_for_image(image, window_sizes, num_windows):
+    """create list of bounding boxes of varying sizes
 
-    c = 0
-    while True:
-        width = np.random.normal(mean, std)
-        x1 = np.random.randint(0, image.width)
-        y1 = np.random.randint(0, image.height)
+    Parameters
+    ----------
+    image : np.array
+    window_sizes : list of int
+        exemple [200, 1000, 2000]
+        sizes of windows to use
+    num_windows : list of int
+        example [1000, 100, 100]
+        how many boxes of each window_size should be created ?
 
-        bbox = (x1, y1, x1 + width, y1 + width)
-        yield bbox
-        c += 1
+    """
+    assert len(window_sizes) == len(num_windows)
+    image_height, image_width, _ = image.shape
+    all_boxes = []
 
-        if c > num_windows:
-            break
+    for size, n_boxes in zip(window_sizes, num_windows):
+        mean = size
+        std = 0.15 * size
+
+        for _ in range(n_boxes):
+            width = np.random.normal(mean, std)
+            x1 = np.random.randint(0, image_width)
+            y1 = np.random.randint(0, image_height)
+
+            bbox = (x1, y1, x1 + width, y1 + width)
+            all_boxes.append(bbox)
+    return all_boxes
 
 
-def build_cropped_images(image, boxes, target_size):
+def build_cropped_images(image, boxes, crop_size):
     """Crop subimages in large image and resize them to a single size.
 
     Parameters
     ----------
-    image: PIL.Image
-    boxes: list of tuple
+    image : np.array of shape (height, width, depth)
+    boxes : list of tuple
         each element in the list is (xmin, ymin, xmax, ymax)
-    target_size : tuple(2)
+    crop_size : tuple(2)
         size of the returned cropped images
         ex: (224, 224)
 
     Returns
     -------
-    cropped_images : np.array
+    cropped_images : tensor
         example shape (N_boxes, 224, 224, 3)
 
     """
-    cropped_images = []
-    for box in boxes:
-        cropped_image = image.crop(box)
-        cropped_image = cropped_image.resize(target_size)
-        cropped_image = np.array(cropped_image)
-        cropped_images.append(cropped_image)
-    return np.array(cropped_images)
-
-
-def convert_probas_to_locations(probas, boxes):
-    top_index, top_proba = np.argmax(probas, axis=1), np.max(probas, axis=1)
-    index_to_class = {
-        0: "Negative",
-        1: "Primordial",
-        2: "Primary",
-        3: "Secondary",
-        4: "Tertiary",
-    }
-    locations = []
-    for index, proba, box in zip(top_index, top_proba, boxes):
-        if index != 0:
-            locations.append(
-                {"class": index_to_class[index], "proba": proba, "bbox": box}
-            )
-    return locations
+    height, width, _ = image.shape
+    images_tensor = [tf.convert_to_tensor(image)]
+    # WARNING: tf.convert_to_tensor([image])   does not seem to work..
+    boxes_for_tf = [
+        (y1 / height, x1 / width, y2 / height, x2 / width) for x1, y1, x2, y2 in boxes
+    ]
+    box_indices = [0] * len(boxes_for_tf)
+    cropped_images = tf.image.crop_and_resize(
+        images_tensor,
+        boxes_for_tf,
+        box_indices,
+        crop_size,
+        method="bilinear",
+        extrapolation_value=0,
+        name=None,
+    )
+    return cropped_images
 
 
 if __name__ == "__main__":
-    detector = ObjectDetector()
-    # detector.fit(None, None)
-    images_to_predict = ["D-1M06-3.jpg"]
-    # images_to_predict = ["D-1M01-3.jpg"]
-    image_paths = [
-        os.path.abspath(
-            os.path.join(
-                os.path.dirname(__file__), "..", "..", "data", "coupes_jpg", ima
-            )
-        )
-        for ima in images_to_predict
-    ]
-    X = np.array(image_paths)  # , "D-1M01-4.jpg"])
-    predictions = detector.predict(X)
-    print(predictions)
+    print("This should be run with 'ramp-test --submission random_classifier'")
