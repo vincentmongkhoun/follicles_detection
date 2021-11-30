@@ -20,9 +20,10 @@ class ClassAveragePrecision(BaseScoreType):
     is_lower_the_better = False
     minimum = 0.0
     maximum = 1.0
+    worst = 0.0
 
     def __init__(self, class_name, iou_threshold):
-        self.name = f"AP <{class_name}>"
+        self.name = f"AP {class_name}"
         self.precision = 3
 
         self.class_name = class_name
@@ -52,6 +53,7 @@ class MeanAveragePrecision(BaseScoreType):
     is_lower_the_better = False
     minimum = 0.0
     maximum = 1.0
+    worst = 0.0
 
     def __init__(self, class_names, weights, iou_threshold):
         self.name = "mean AP"
@@ -89,9 +91,11 @@ def average_precision(precision, recall):
     average_precision : float
 
     """  # noqa : E501
-    return sum(
-        p * (r_i - r_i_1)
-        for p, r_i, r_i_1 in zip(precision[1:], recall[1:], recall[:-1])
+    return float(
+        sum(
+            p * (r_i - r_i_1)
+            for p, r_i, r_i_1 in zip(precision[1:], recall[1:], recall[:-1])
+        )
     )
 
 
