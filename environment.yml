@@ -1,0 +1,20 @@
+name: ramp-follicles
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - numpy
+  - scikit-learn
+  - pandas
+  - matplotlib
+  - jupyter
+  - tensorflow==2.6.2
+
+  # dev
+  - black
+  - flake8
+
+  - pip
+  - pip:
+    - osfclient
+    - ramp-workflow
