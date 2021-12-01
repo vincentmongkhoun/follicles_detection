@@ -18,6 +18,7 @@ models
 .venv
 .pyc
 __pycache__
+.ipynb_checkpoints
 
 # MAC os
 .DS_Store
