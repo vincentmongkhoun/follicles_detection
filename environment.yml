@@ -1,4 +1,3 @@
-name: ramp-follicles
 channels:
   - conda-forge
   - defaults
