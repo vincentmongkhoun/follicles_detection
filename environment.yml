@@ -1,0 +1,19 @@
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - numpy
+  - scikit-learn
+  - pandas
+  - matplotlib
+  - jupyter
+
+  # dev
+  - black
+  - flake8
+
+  - pip
+  - pip:
+    - tensorflow==2.6.2
+    - osfclient
+    - ramp-workflow

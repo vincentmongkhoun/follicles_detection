@@ -7,18 +7,16 @@ matplotlib
 numpy
 jupyter
 pandas
-sklearn
 
 tensorflow==2.6.2
-sklearn
+scikit-learn
 
 # dev
-click
 flake8
 black
 # line_profiler
 
 # doc
-sphinx
-pydata-sphinx-theme
-myst-parser
+# sphinx
+# pydata-sphinx-theme
+# myst-parser

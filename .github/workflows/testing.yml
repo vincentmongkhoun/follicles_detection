@@ -1,0 +1,66 @@
+name: 'build'
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  check_same_deps:
+    name: Check pip and conda install same env
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: pip install pyyaml
+      - name: Check same requirements
+        run: python .github/workflows/check_deps.py
+
+  build_conda:
+    name: Linux Conda
+    runs-on: "ubuntu-latest"
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          activate-environment: i-can-choose-the-name
+          environment-file: environment.yml
+          python-version: 3.8
+          auto-activate-base: false
+      - run: |
+          conda info
+          conda list
+          python download_data.py
+          ramp-test --quick-test
+          ramp-test --quick-test --submission random_classifier
+
+  build_pip:
+    name: Linux pip
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Test
+      run: |
+        flake8 *.py submissions/*/*.py ramp_custom/*.py
+        python download_data.py
+        ramp-test --quick-test
+        ramp-test --quick-test --submission random_classifier
