@@ -7,6 +7,8 @@ from sklearn.model_selection import LeaveOneGroupOut
 
 from rampwf.workflows import ObjectDetector
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 
 class utils:
     """Utility functions helpful in the challenge."""
