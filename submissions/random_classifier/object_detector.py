@@ -17,6 +17,7 @@ score  AP <Primordial>  AP <Primary>  AP <Secondary>  AP <Tertiary>  mean AP
 valid            0.000         0.026           0.361          0.626    0.253
 test             0.002         0.008           0.475          0.625    0.278
 """
+import os
 import numpy as np
 import tensorflow as tf
 from matplotlib.image import imread
@@ -124,7 +125,10 @@ class ObjectDetector:
         y_for_classifier = tf.constant(
             expected_predictions
         )  # class to predict as tensor of shape (N_boxes)
-        self._model.fit(X_for_classifier, y_for_classifier, epochs=100)
+        if os.environ.get("RAMP_TEST_MODE", False):
+            self._model.fit(X_for_classifier, y_for_classifier, epochs=10)
+        else:
+            self._model.fit(X_for_classifier, y_for_classifier, epochs=100)
         return self
 
     def predict(self, X):
@@ -142,7 +146,10 @@ class ObjectDetector:
         image = imread(image_path)
 
         boxes_sizes = [3000, 1000, 300]  # px
-        boxes_amount = [200, 500, 2_000]
+        if os.environ.get("RAMP_TEST_MODE", False):
+            boxes_amount = [10, 10, 10]
+        else:
+            boxes_amount = [200, 500, 200]
         boxes = generate_random_windows_for_image(image, boxes_sizes, boxes_amount)
         cropped_images = build_cropped_images(
             image, boxes, crop_size=self.IMG_SHAPE[0:2]
