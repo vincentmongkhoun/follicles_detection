@@ -1,22 +1,4 @@
-"""
-Result of `ramp-test --submision random_classifier`
 
-total runtime ~30min
-
-----------------------------
-Mean CV scores
-----------------------------
-score AP <Primordial>    AP <Primary>  AP <Secondary>   AP <Tertiary>         mean AP           time
-train  0.001 ± 0.0007  0.023 ± 0.0077   0.375 ± 0.025  0.436 ± 0.0563  0.209 ± 0.0208  130.8 ± 20.49
-valid       0.0 ± 0.0  0.037 ± 0.0214  0.332 ± 0.0734  0.458 ± 0.0557  0.207 ± 0.0107   166.2 ± 5.91
-test   0.001 ± 0.0018  0.008 ± 0.0141  0.325 ± 0.1782  0.398 ± 0.1259  0.183 ± 0.0683    32.3 ± 0.48
-----------------------------
-Bagged scores
-----------------------------
-score  AP <Primordial>  AP <Primary>  AP <Secondary>  AP <Tertiary>  mean AP
-valid            0.000         0.026           0.361          0.626    0.253
-test             0.002         0.008           0.475          0.625    0.278
-"""
 import os
 import numpy as np
 import tensorflow as tf
