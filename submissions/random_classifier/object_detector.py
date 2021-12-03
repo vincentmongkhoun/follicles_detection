@@ -128,7 +128,7 @@ class ObjectDetector:
         if os.environ.get("RAMP_TEST_MODE", False):
             self._model.fit(X_for_classifier, y_for_classifier, epochs=10)
         else:
-            self._model.fit(X_for_classifier, y_for_classifier, epochs=100)
+            self._model.fit(X_for_classifier, y_for_classifier, epochs=50)
         return self
 
     def predict(self, X):
@@ -145,11 +145,11 @@ class ObjectDetector:
     def predict_single_image(self, image_path):
         image = imread(image_path)
 
-        boxes_sizes = [3000, 1000, 300]  # px
+        boxes_sizes = [1500, 1000, 500]  # px
         if os.environ.get("RAMP_TEST_MODE", False):
             boxes_amount = [10, 10, 10]
         else:
-            boxes_amount = [200, 500, 200]
+            boxes_amount = [300, 400, 200]
         boxes = generate_random_windows_for_image(image, boxes_sizes, boxes_amount)
         cropped_images = build_cropped_images(
             image, boxes, crop_size=self.IMG_SHAPE[0:2]
