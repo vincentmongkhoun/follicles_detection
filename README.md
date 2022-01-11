@@ -1,7 +1,7 @@
 # Getting started
 
 
-Authors : François Caud, Benjamin Habert and Alexandre Gramfort (Université Paris-Saclay)
+Authors : François Caud, Benjamin Habert and Alexandre Gramfort (DATAIA, Université Paris-Saclay)
 
 
 ## Install
