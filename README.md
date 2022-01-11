@@ -33,8 +33,6 @@ pip install -r requirements.txt
 
 #### Installing dependencies in a `conda` environment
 
-TODO
-
 If you are using `conda`, we provide an `environment.yml` file for similar
 usage.
 
@@ -79,7 +77,7 @@ Open the file `doc/build/html/index.html` in a browser.
 
 ## Challenge description
 
-Get started with the [dedicated notebook]
+Get started with the [dedicated notebook](follicles_detection_starting_kit.ipynb)
 
 
 ## Test a submission
