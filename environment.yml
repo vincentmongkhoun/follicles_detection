@@ -11,6 +11,8 @@ dependencies:
   - pytorch
   - torchvision
   - opencv
+  - imageio
+  - scipy
 
   # dev
   - black
@@ -18,8 +20,6 @@ dependencies:
 
   - pip
   - pip:
-    - imageio
-    - scipy
     - tensorflow==2.6.2
     - osfclient
     - ramp-workflow
