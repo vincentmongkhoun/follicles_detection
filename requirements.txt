@@ -3,7 +3,7 @@ ramp-workflow
 osfclient
 
 # generic datascience
-matplotlib
+matplotlib  # matplotlib-base
 numpy
 jupyter
 pandas

@@ -1,18 +1,19 @@
 name: follicles-detection
 channels:
+  - pytorch
   - conda-forge
-  - defaults
 dependencies:
   - numpy
   - scikit-learn
   - pandas
-  - matplotlib
   - jupyter
-  - pytorch
-  - torchvision
+  - matplotlib-base
   - opencv
   - imageio
   - scipy
+  - pytorch
+  - cudatoolkit=10.2
+  - torchvision
 
   # dev
   - black
